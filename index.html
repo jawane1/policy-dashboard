@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Policy Regulatory Dashboard — Chainalysis</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1117; color: #e0e0e0; }
+  
+  .header { background: linear-gradient(135deg, #1a1d2e 0%, #2d1f3d 100%); padding: 28px 40px; border-bottom: 1px solid #2a2d3e; }
+  .header h1 { font-size: 24px; font-weight: 600; color: #fff; }
+  .header .subtitle { font-size: 13px; color: #8b8fa3; margin-top: 4px; }
+  .header .updated { float: right; font-size: 12px; color: #6b6f83; margin-top: -30px; }
+  
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px 40px; }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .span-2 { grid-column: span 2; }
+  
+  .card { background: #1a1d2e; border: 1px solid #2a2d3e; border-radius: 12px; padding: 20px; }
+  .card h3 { font-size: 13px; font-weight: 500; color: #8b8fa3; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+  .card .explainer { font-size: 11px; color: #6b6f83; margin-bottom: 12px; line-height: 1.5; }
+  .card .big-number { font-size: 42px; font-weight: 700; color: #fff; }
+  
+  .stat-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .stat-pill { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+  .pill-red { background: rgba(239,68,68,0.15); color: #f87171; }
+  .pill-orange { background: rgba(251,146,60,0.15); color: #fb923c; }
+  .pill-blue { background: rgba(96,165,250,0.15); color: #60a5fa; }
+  .pill-green { background: rgba(74,222,128,0.15); color: #4ade80; }
+  .pill-grey { background: rgba(148,163,184,0.15); color: #94a3b8; }
+  .pill-yellow { background: rgba(251,191,36,0.15); color: #fbbf24; }
+  
+  .alert-banner { background: linear-gradient(90deg, rgba(239,68,68,0.1) 0%, rgba(239,68,68,0.05) 100%); border: 1px solid rgba(239,68,68,0.3); border-radius: 12px; padding: 16px 20px; margin: 0 40px; }
+  .alert-banner h3 { color: #f87171; margin-bottom: 4px; font-size: 14px; }
+  .alert-banner .explainer { font-size: 11px; color: #8b8fa3; margin-bottom: 10px; }
+  .alert-item { display: grid; grid-template-columns: 60px 1fr 80px 80px; gap: 8px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; align-items: center; }
+  .alert-item:last-child { border: none; }
+  .alert-item .date { color: #f87171; font-weight: 600; }
+  .alert-item .status-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; text-align: center; }
+  .badge-open { background: rgba(74,222,128,0.15); color: #4ade80; }
+  .badge-upcoming { background: rgba(251,191,36,0.15); color: #fbbf24; }
+  .alert-item .owner { color: #8b8fa3; text-align: right; }
+  .alert-item .unassigned { color: #f87171; font-weight: 600; text-align: right; }
+  
+  .chart-container { position: relative; height: 280px; }
+  .chart-container.tall { height: 350px; }
+  
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table th { text-align: left; padding: 8px 12px; color: #8b8fa3; font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #2a2d3e; }
+  table td { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+  table tr:hover { background: rgba(255,255,255,0.02); }
+  
+  .priority-badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .badge-p1 { background: rgba(239,68,68,0.15); color: #f87171; }
+  .badge-p2 { background: rgba(251,146,60,0.15); color: #fb923c; }
+  .badge-p3 { background: rgba(96,165,250,0.15); color: #60a5fa; }
+  
+  .section-title { padding: 20px 40px 8px; font-size: 11px; font-weight: 600; color: #6b6f83; text-transform: uppercase; letter-spacing: 1px; }
+  
+  .coverage-bar { display: flex; align-items: center; gap: 8px; }
+  .coverage-fill { height: 6px; border-radius: 3px; }
+  .fill-green { background: #4ade80; }
+  .fill-yellow { background: #fbbf24; }
+  .fill-red { background: #f87171; }
+  .fill-grey { background: #4a4d5e; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="updated">Last updated: 24 Apr 2026</div>
+  <h1>Policy Regulatory Dashboard</h1>
+  <div class="subtitle">Chainalysis Policy Team — Global regulatory landscape at a glance</div>
+</div>
+
+<!-- KPI Cards -->
+<div class="grid" style="padding-top: 24px;">
+  <div class="card">
+    <h3>Items Tracked</h3>
+    <div class="explainer">Regulatory actions, legislation, and consultations across all jurisdictions</div>
+    <div class="big-number">243</div>
+    <div class="stat-row">
+      <span class="stat-pill pill-green">75 in progress</span>
+      <span class="stat-pill pill-blue">73 forthcoming</span>
+      <span class="stat-pill pill-grey">86 happened</span>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Response Required</h3>
+    <div class="explainer">Consultations and NPRMs with an open or upcoming comment period that we should submit a response to</div>
+    <div class="big-number" style="color: #4ade80;">13</div>
+    <div class="stat-row">
+      <span class="stat-pill pill-green">9 comment open now</span>
+      <span class="stat-pill pill-yellow">4 comment expected</span>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Needs Owner</h3>
+    <div class="explainer">Response Required items without a named person responsible for drafting the response</div>
+    <div class="big-number" style="color: #f87171;">4</div>
+    <div class="stat-row">
+      <span class="stat-pill pill-red">4 unassigned</span>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Key Priorities (P1)</h3>
+    <div class="explainer">Items tagged to our top strategic priorities — the areas we actively shape and invest in</div>
+    <div class="big-number">198</div>
+    <div class="stat-row">
+      <span class="stat-pill pill-red">P1: 198</span>
+      <span class="stat-pill pill-orange">P2: 16</span>
+      <span class="stat-pill pill-blue">P3: 15</span>
+    </div>
+  </div>
+</div>
+
+<!-- Response Required Banner -->
+<div class="alert-banner">
+  <h3>📝 Response Required — All Open & Upcoming</h3>
+  <div class="explainer">These are consultations, NPRMs, or requests for comment where Chainalysis should submit a written response. Items marked OPEN have a live comment period with a deadline. UPCOMING means a comment period is expected but hasn't opened yet.</div>
+  
+  <div class="alert-item" style="color:#6b6f83; font-size:11px; font-weight:600; border-bottom: 1px solid rgba(255,255,255,0.1);">
+    <span>DEADLINE</span><span>CONSULTATION</span><span>STATUS</span><span style="text-align:right">OWNER</span>
+  </div>
+  <div class="alert-item"><span class="date">30 Apr</span><span>CFTC — Prediction Markets consultation</span><span class="status-badge badge-open">OPEN</span><span class="owner">Jordan</span></div>
+  <div class="alert-item"><span class="date">1 May</span><span>OCC — GENIUS Act implementation NPRM</span><span class="status-badge badge-open">OPEN</span><span class="owner">Jordan</span></div>
+  <div class="alert-item"><span class="date">8 May</span><span>AMLA — CDD obligations RTS</span><span class="status-badge badge-open">OPEN</span><span class="owner">Matthias</span></div>
+  <div class="alert-item"><span class="date">2 Jun</span><span>Treasury — State-level regime principles</span><span class="status-badge badge-open">OPEN</span><span class="owner">Jordan</span></div>
+  <div class="alert-item"><span class="date">3 Jun</span><span>FCA — Final crypto authorisation guidance</span><span class="status-badge badge-open">OPEN</span><span class="owner">Jordan</span></div>
+  <div class="alert-item"><span class="date">9 Jun</span><span>FinCEN — GENIUS Act NPRM</span><span class="status-badge badge-open">OPEN</span><span class="owner">Lauren</span></div>
+  <div class="alert-item"><span class="date">9 Jun</span><span>FDIC — GENIUS Act NPRM</span><span class="status-badge badge-open">OPEN</span><span class="owner">Jordan</span></div>
+  <div class="alert-item"><span class="date">15 Jun</span><span>SEC — Broker-Dealer registration / DeFi</span><span class="status-badge badge-open">OPEN</span><span class="owner">Lauren</span></div>
+  <div class="alert-item"><span class="date">30 Jun</span><span>FinCEN — Modernizing AML regime NPRM</span><span class="status-badge badge-open">OPEN</span><span class="unassigned">Unassigned</span></div>
+  <div class="alert-item"><span class="date">TBD</span><span>Treasury — GENIUS Act rule (under development)</span><span class="status-badge badge-upcoming">UPCOMING</span><span class="unassigned">Unassigned</span></div>
+  <div class="alert-item"><span class="date">TBD</span><span>FinCEN — DeFi AML rule proposal</span><span class="status-badge badge-upcoming">UPCOMING</span><span class="unassigned">Unassigned</span></div>
+  <div class="alert-item"><span class="date">TBD</span><span>FATF — Privacy coin due diligence guidance</span><span class="status-badge badge-upcoming">UPCOMING</span><span class="unassigned">Unassigned</span></div>
+  <div class="alert-item"><span class="date">TBD</span><span>EU Commission — MiCA review consultation</span><span class="status-badge badge-upcoming">UPCOMING</span><span class="owner">Matthias</span></div>
+</div>
+
+<!-- Charts Row 1 -->
+<div class="section-title">Where is regulatory activity concentrated?</div>
+<div class="grid grid-3" style="padding-top: 0;">
+  <div class="card span-2">
+    <h3>Regulatory Activity Timeline</h3>
+    <div class="explainer">Forward-looking items by month, stacked by strategic priority. Shows where activity clusters — plan team capacity around peaks.</div>
+    <div class="chart-container tall"><canvas id="timelineChart"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>By Strategic Priority</h3>
+    <div class="explainer">How the 243 tracked items map to our strategic framework. Crypto & Stablecoin and AML/CFT dominate.</div>
+    <div class="chart-container tall"><canvas id="priorityChart"></canvas></div>
+  </div>
+</div>
+
+<!-- Charts Row 2 -->
+<div class="grid grid-3" style="padding-top: 0;">
+  <div class="card">
+    <h3>By Region</h3>
+    <div class="explainer">Geographic spread of regulatory activity. Use this to align with regional sales teams.</div>
+    <div class="chart-container"><canvas id="regionChart"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>By Type</h3>
+    <div class="explainer">The kind of regulatory action — legislation, rulemaking, enforcement deadlines, etc.</div>
+    <div class="chart-container"><canvas id="typeChart"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>Product Demand Signals</h3>
+    <div class="explainer">How many regulatory items mention each product. Higher = more regulatory activity driving demand for that product.</div>
+    <div class="chart-container"><canvas id="productChart"></canvas></div>
+  </div>
+</div>
+
+<!-- Coverage Scorecard -->
+<div class="section-title">How well are we covering each priority?</div>
+<div class="grid" style="grid-template-columns: 1fr; padding-top: 0;">
+  <div class="card">
+    <div class="explainer" style="margin-bottom: 16px;">Coverage assessment per strategic priority. <strong>Strong</strong> = good item count and active consultations being handled. <strong>Moderate</strong> = items exist but limited engagement. <strong>Light</strong> = few items tracked. <strong>Gaps</strong> = unassigned response-required items.</div>
+    <table>
+      <tr><th>Strategic Priority</th><th>Level</th><th>Posture</th><th>Items</th><th>Next 90d</th><th>Open</th><th>Coverage</th></tr>
+      <tr><td>Crypto & Stablecoin</td><td><span class="priority-badge badge-p1">P1</span></td><td>Key priority</td><td>108</td><td>35</td><td>8</td><td style="color:#4ade80;">🟢 Strong</td></tr>
+      <tr><td>AML/CFT & Travel Rule</td><td><span class="priority-badge badge-p1">P1</span></td><td>Key priority (BAU)</td><td>64</td><td>15</td><td>4</td><td style="color:#4ade80;">🟢 Strong</td></tr>
+      <tr><td>Fraud & Scams</td><td><span class="priority-badge badge-p1">P1</span></td><td>Key priority</td><td>18</td><td>3</td><td>1</td><td style="color:#fbbf24;">🟡 Moderate</td></tr>
+      <tr><td>AI</td><td><span class="priority-badge badge-p1">P1</span></td><td>Key priority</td><td>8</td><td>2</td><td>0</td><td style="color:#fbbf24;">🟡 Light</td></tr>
+      <tr><td>Data Quality & Standards</td><td><span class="priority-badge badge-p1">P1</span></td><td>Key priority</td><td>0</td><td>0</td><td>0</td><td style="color:#94a3b8;">⚪ Internal work — no external items</td></tr>
+      <tr><td>Economic Warfare</td><td><span class="priority-badge badge-p1">P1</span></td><td>Key priority</td><td>0</td><td>0</td><td>0</td><td style="color:#94a3b8;">⚪ Niche — identify policy vehicles</td></tr>
+      <tr><td>Cybersecurity</td><td><span class="priority-badge badge-p2">P2</span></td><td>Secondary</td><td>14</td><td>4</td><td>0</td><td style="color:#4ade80;">🟢 Strong</td></tr>
+      <tr><td>Prediction Markets</td><td><span class="priority-badge badge-p2">P2</span></td><td>Secondary</td><td>2</td><td>1</td><td>1</td><td style="color:#fbbf24;">🟡 Active — CFTC consultation open</td></tr>
+      <tr><td>Tax</td><td><span class="priority-badge badge-p3">P3</span></td><td>Watching brief</td><td>10</td><td>1</td><td>0</td><td style="color:#4ade80;">🟢 Monitoring only (as intended)</td></tr>
+      <tr><td>DeFi</td><td><span class="priority-badge badge-p3">P3</span></td><td>Watching brief</td><td>5</td><td>2</td><td>0</td><td style="color:#fbbf24;">🟡 Monitoring only (as intended)</td></tr>
+    </table>
+  </div>
+</div>
+
+<div style="padding: 40px; text-align: center; color: #4a4d5e; font-size: 12px;">
+  Chainalysis Policy Team · Data sourced from <a href="https://docs.google.com/spreadsheets/d/1lMeoK00KfXdCRo59n-0Y21jfbhZIcb-3s46uwvBFT5g/edit" style="color:#6b6f83;">Policy Event Tracker</a> · Auto-refreshes weekly
+</div>
+
+<script>
+const c = { red:'#f87171', orange:'#fb923c', amber:'#fbbf24', green:'#4ade80', blue:'#60a5fa', purple:'#a78bfa', pink:'#f472b6', grey:'#94a3b8', cyan:'#22d3ee', lime:'#a3e635' };
+
+new Chart(document.getElementById('timelineChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan 27','Feb','Mar','Apr'],
+    datasets: [
+      { label: 'Crypto & Stablecoin', data: [2,3,24,6,3,4,5,2,1,0,0,0,0], backgroundColor: c.blue, borderRadius: 3 },
+      { label: 'AML/CFT', data: [1,3,24,2,0,4,0,0,2,0,0,0,1], backgroundColor: c.green, borderRadius: 3 },
+      { label: 'Fraud & Scams', data: [0,0,1,1,1,0,3,0,0,0,0,0,0], backgroundColor: c.orange, borderRadius: 3 },
+      { label: 'AI', data: [1,0,0,2,1,0,0,0,0,0,0,0,0], backgroundColor: c.purple, borderRadius: 3 },
+      { label: 'Cybersecurity', data: [0,1,1,1,0,1,0,0,0,0,0,0,0], backgroundColor: c.cyan, borderRadius: 3 },
+      { label: 'Other', data: [0,2,4,2,0,3,2,1,1,0,0,0,0], backgroundColor: c.grey, borderRadius: 3 },
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position:'bottom', labels: { color:'#8b8fa3', boxWidth:12, padding:16, font:{size:11} } } },
+    scales: { x: { stacked:true, ticks:{color:'#6b6f83',font:{size:10}}, grid:{color:'rgba(255,255,255,0.03)'} },
+              y: { stacked:true, ticks:{color:'#6b6f83'}, grid:{color:'rgba(255,255,255,0.05)'} } }
+  }
+});
+
+new Chart(document.getElementById('priorityChart'), {
+  type: 'doughnut',
+  data: { labels: ['Crypto & Stablecoin','AML/CFT','Fraud & Scams','AI','Cybersecurity','Tax','DeFi','General'],
+    datasets: [{ data: [108,64,18,8,14,10,5,14], backgroundColor: [c.blue,c.green,c.orange,c.purple,c.cyan,c.amber,c.pink,c.grey], borderWidth:0 }] },
+  options: { responsive:true, maintainAspectRatio:false, cutout:'60%',
+    plugins: { legend: { position:'right', labels: { color:'#8b8fa3', boxWidth:10, padding:8, font:{size:10} } } } }
+});
+
+new Chart(document.getElementById('regionChart'), {
+  type: 'doughnut',
+  data: { labels: ['Europe','Americas','Asia-Pacific','MEA','International'],
+    datasets: [{ data: [61,73,43,16,19], backgroundColor: [c.purple,c.blue,c.green,c.orange,c.amber], borderWidth:0 }] },
+  options: { responsive:true, maintainAspectRatio:false, cutout:'55%',
+    plugins: { legend: { position:'bottom', labels: { color:'#8b8fa3', boxWidth:10, padding:8, font:{size:10} } } } }
+});
+
+new Chart(document.getElementById('typeChart'), {
+  type: 'bar',
+  data: { labels: ['Legislation','Rulemaking','Framework','Deadline','Event','Consultation','Standard'],
+    datasets: [{ data: [56,49,47,33,24,19,13], backgroundColor: [c.blue,c.green,c.orange,c.red,c.grey,c.purple,c.cyan], borderRadius:4 }] },
+  options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
+    plugins: { legend: { display:false } },
+    scales: { x:{ticks:{color:'#6b6f83'},grid:{color:'rgba(255,255,255,0.05)'}}, y:{ticks:{color:'#8b8fa3',font:{size:11}},grid:{display:false}} } }
+});
+
+new Chart(document.getElementById('productChart'), {
+  type: 'bar',
+  data: { labels: ['KYT','Data Solutions','Reactor','OSINT','Hexagate','Alterya'],
+    datasets: [{ data: [180,155,120,30,25,20], backgroundColor: [c.green,c.purple,c.blue,c.grey,c.cyan,c.orange], borderRadius:4 }] },
+  options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
+    plugins: { legend: { display:false } },
+    scales: { x:{ticks:{color:'#6b6f83'},grid:{color:'rgba(255,255,255,0.05)'}}, y:{ticks:{color:'#8b8fa3',font:{size:11}},grid:{display:false}} } }
+});
+</script>
+</body>
+</html>
